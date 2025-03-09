@@ -1,5 +1,7 @@
 # Demo App - Zod Schema Validation
 
+This Repo is to support a question I posted on [Stack Overflow](https://stackoverflow.com/questions/79494350/zod-schema-validation-of-formdata-with-multiple-files-failing) regarding Zod Schema Validation with multiple files.
+
 ## Table of Contents
 
 - [Update](#update)
@@ -74,8 +76,6 @@ export const validate = (schema) => (req, res, next) => {
 ```
 
 ## Orig Issue
-
-This Repo is to support a question I posted on [Stack Overflow](https://stackoverflow.com/questions/79494350/zod-schema-validation-of-formdata-with-multiple-files-failing) regarding Zod Schema Validation with multiple files.
 
 This App has an error when performing Zod Schema validation of FormData containing a multi-select HTML `file` input element (2 files attached).
 
