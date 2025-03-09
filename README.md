@@ -1,14 +1,89 @@
 # Demo App - Zod Schema Validation
 
+## Table of Contents
+
+- [Update](#update)
+  - [Solution](#solution)
+    - [Schema](#schema)
+    - [Validator](#validator)
+- [Orig Issue](#orig-issue)
+- [Code](#code)
+  - [HTML Form](#html-form)
+  - [JavaScript](#javascript)
+  - [Express Route](#express-route)
+- [Schema Validation Config - Success](#schema-validation-config---success)
+- [Schema Validation Config - Error](#schema-validation-config---error)
+- [To Test](#to-test)
+  - [Start Client App](#start-client-app)
+  - [Start Api Server](#start-api-server)
+  - [Submit Blog Post](#submit-blog-post)
+
+## Update
+
+Thanks to [traynor](https://stackoverflow.com/users/4321299/traynor) for the solution to the [issue](https://stackoverflow.com/questions/79494350/zod-schema-validation-of-formdata-with-multiple-files-failing) described below.
+
+### Solution
+
+"The problem is that you pass req.body to your validation middleware... but multer stores files in `req.files`, which is why it's undefined, while other fields are in `req.body`, which is why it works when files are not present. So, you'd need to include req.files in validation. Also, multer doesn't use File types, it creates custom objects ... So, you could instead validate files as array of objects." - [traynor](https://stackoverflow.com/users/4321299/traynor)
+
+#### Schema
+
+```Javascript
+const ACCEPTED_IMAGE_TYPES = ["image/png"];
+
+// Define a schema for a single file uploaded via Multer
+const multerFile = z.object({
+  fieldname: z.string(),
+  originalname: z.string(),
+  encoding: z.string(),
+  mimetype: z.string(),
+  destination: z.string(),
+  filename: z.string(),
+  path: z.string(),
+  size: z.number()
+});
+
+// Define a schema for a blog post that includes a title, content, and 2 image files
+export const blogSchema = zfd.formData({
+  title: z.string().min(1).max(50),
+  content: z.string().min(1),
+  // Validate that the files array contains exactly 2 files, and that each file is a PNG image
+  files: z.array(multerFile).min(2).max(2).refine((files) => {
+    return files.every((file) => ACCEPTED_IMAGE_TYPES.includes(file.mimetype));
+  })
+});
+```
+
+#### Validator
+
+```Javascript
+export const validate = (schema) => (req, res, next) => {
+  try {
+    logger.info(JSON.stringify(req.body));
+
+    // Validate the request body and files against the schema
+    // files is an array of objects, each object representing a file uploaded via Multer
+    schema.parse({ ...req.body, files: req.files });
+
+    // If there are no errors, call the next middleware function
+    next();
+  } catch (err) {
+    return res.status(400).send(err.errors);
+  }
+};
+```
+
+## Orig Issue
+
 This Repo is to support a question I posted on [Stack Overflow](https://stackoverflow.com/questions/79494350/zod-schema-validation-of-formdata-with-multiple-files-failing) regarding Zod Schema Validation with multiple files.
 
 This App has an error when performing Zod Schema validation of FormData containing a multi-select HTML `file` input element (2 files attached).
 
 ![Screenshot 0](./readme_img/screenshot_0.png)
 
-## Code
+### Code
 
-### HTML Form
+#### HTML Form
 
 ```HTML
     <form id="blog-post">
@@ -40,7 +115,7 @@ This App has an error when performing Zod Schema validation of FormData containi
     </form>
 ```
 
-### JavaScript
+#### JavaScript
 
 ```Javascript
     // Create a new FormData object
@@ -65,7 +140,7 @@ This App has an error when performing Zod Schema validation of FormData containi
     console.log(await response.json());
 ```
 
-### Express Route
+#### Express Route
 
 ```Javascript
 import express from "express";
@@ -95,11 +170,11 @@ router.post("/", upload.array("files", 2), validate(blogSchema), addBlogPost);
 export default router;
 ```
 
-## Schema Validation Config - Success
+### Schema Validation Config - Success
 
 When validating only the FormData's `title` and `content` properties, validation is successful.
 
-### blogSchema.js
+#### blogSchema.js
 
 ```Javascript
 const ACCEPTED_IMAGE_TYPES = ["image/png"];
@@ -114,7 +189,7 @@ export const blogSchema = zfd.formData({
 
 ```
 
-### Response
+#### Response
 
 Note: `uuid` is generated on the server before the response is sent back to the client.
 
@@ -126,11 +201,11 @@ Note: `uuid` is generated on the server before the response is sent back to the 
 }
 ```
 
-## Schema Validation Config - Error
+### Schema Validation Config - Error
 
 When validation includes the FormData's `files` property, validation fails because `files` is `undefined`.
 
-### blogSchema.js
+#### blogSchema.js
 
 ```Javascript
 const ACCEPTED_IMAGE_TYPES = ["image/png"];
@@ -144,7 +219,7 @@ export const blogSchema = zfd.formData({
 });
 ```
 
-### Response
+#### Response
 
 ```Javascript
 [
@@ -160,29 +235,29 @@ export const blogSchema = zfd.formData({
 ]
 ```
 
-## To Test
+### To Test
 
-### Start Client App
+#### Start Client App
 
 1. Open Terminal in the `client-app` dir
 2. Execute `npm install && npm start`
 
-### Start Api Server
+#### Start Api Server
 
 1. Open Terminal in the `api-server` dir
 2. Execute `npm install && npm run dev`
 
-### Submit Blog Post
+#### Submit Blog Post
 
 1. Launch [http://localhost:3000](http://localhost:3000) in Browser.
 2. Select `alpine_car.png` and `alpine_logo.png` files from `./sample-images` folder in the `Upload Images` HTML file element.
 3. Submit Blog post
 
-#### Populated Form
+##### Populated Form
 
 ![Screenshot 1](./readme_img/screenshot_1.png)
 
-#### Error Response
+##### Error Response
 
 ![Screenshot 2](./readme_img/screenshot_2.png)
 
